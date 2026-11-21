@@ -1,0 +1,269 @@
+{
+  "info": {
+    "name": "Hub de Cobranza — BIAN Customer Billing + Fineract 1.12.1",
+    "description": "Colección de pruebas end-to-end para sincronizar lotes desde Apache Fineract 1.12.1, simular los pagos de demostración y consultar las órdenes locales de cobranza.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "hubBaseUrl",
+      "value": "http://localhost:8080/api/v1"
+    },
+    {
+      "key": "fineractBaseUrl",
+      "value": "https://localhost:8443/fineract-provider/api/v1"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Primera Sincronización (Estado Inicial PENDING)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json();",
+              "if (json.batch && json.batch.id) {",
+              "    pm.collectionVariables.set('lastBatchId', json.batch.id);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cutOffDate\": \"2026-10-15\",\n  \"horizonEndDate\": \"2026-11-15\",\n  \"loanReferences\": [\n    \"LOAN-DEMO-001\"\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{hubBaseUrl}}/billing-batches/synchronizations",
+          "host": [
+            "{{hubBaseUrl}}"
+          ],
+          "path": [
+            "billing-batches",
+            "synchronizations"
+          ]
+        }
+      }
+    },
+    {
+      "name": "2. Fineract — Registrar Abono Parcial (S/ 500.00)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Basic bWlmb3M6cGFzc3dvcmQ="
+          },
+          {
+            "key": "Fineract-Platform-TenantId",
+            "value": "default"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"transactionDate\": \"15 October 2026\",\n  \"transactionAmount\": 500.00,\n  \"paymentTypeId\": 1,\n  \"locale\": \"en\",\n  \"dateFormat\": \"dd MMMM yyyy\"\n}"
+        },
+        "url": {
+          "raw": "{{fineractBaseUrl}}/loans/1/transactions?command=repayment",
+          "host": [
+            "{{fineractBaseUrl}}"
+          ],
+          "path": [
+            "loans",
+            "1",
+            "transactions"
+          ],
+          "query": [
+            {
+              "key": "command",
+              "value": "repayment"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "3. Segunda Sincronización (Cuota #1 PARTIALLY_PAID)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json();",
+              "if (json.batch && json.batch.id) {",
+              "    pm.collectionVariables.set('lastBatchId', json.batch.id);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cutOffDate\": \"2026-10-15\",\n  \"horizonEndDate\": \"2026-11-15\",\n  \"loanReferences\": [\n    \"LOAN-DEMO-001\"\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{hubBaseUrl}}/billing-batches/synchronizations",
+          "host": [
+            "{{hubBaseUrl}}"
+          ],
+          "path": [
+            "billing-batches",
+            "synchronizations"
+          ]
+        }
+      }
+    },
+    {
+      "name": "4. Fineract — Liquidar Saldo Cuota #1 (S/ 620.00)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Basic bWlmb3M6cGFzc3dvcmQ="
+          },
+          {
+            "key": "Fineract-Platform-TenantId",
+            "value": "default"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"transactionDate\": \"15 October 2026\",\n  \"transactionAmount\": 620.00,\n  \"paymentTypeId\": 1,\n  \"locale\": \"en\",\n  \"dateFormat\": \"dd MMMM yyyy\"\n}"
+        },
+        "url": {
+          "raw": "{{fineractBaseUrl}}/loans/1/transactions?command=repayment",
+          "host": [
+            "{{fineractBaseUrl}}"
+          ],
+          "path": [
+            "loans",
+            "1",
+            "transactions"
+          ],
+          "query": [
+            {
+              "key": "command",
+              "value": "repayment"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "5. Tercera Sincronización (Cuota #1 PAID)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json();",
+              "if (json.batch && json.batch.id) {",
+              "    pm.collectionVariables.set('lastBatchId', json.batch.id);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cutOffDate\": \"2026-10-15\",\n  \"horizonEndDate\": \"2026-11-15\",\n  \"loanReferences\": [\n    \"LOAN-DEMO-001\"\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{hubBaseUrl}}/billing-batches/synchronizations",
+          "host": [
+            "{{hubBaseUrl}}"
+          ],
+          "path": [
+            "billing-batches",
+            "synchronizations"
+          ]
+        }
+      }
+    },
+    {
+      "name": "6. Consultar Último Lote Ejecutado (Control Record)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{hubBaseUrl}}/billing-batches/{{lastBatchId}}",
+          "host": [
+            "{{hubBaseUrl}}"
+          ],
+          "path": [
+            "billing-batches",
+            "{{lastBatchId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "7. Consultar Órdenes de Cobranza Filtradas",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{hubBaseUrl}}/collection-orders?loanReference=LOAN-DEMO-001&dueDateTo=2026-11-15",
+          "host": [
+            "{{hubBaseUrl}}"
+          ],
+          "path": [
+            "collection-orders"
+          ],
+          "query": [
+            {
+              "key": "loanReference",
+              "value": "LOAN-DEMO-001"
+            },
+            {
+              "key": "dueDateTo",
+              "value": "2026-11-15"
+            },
+            {
+              "key": "status",
+              "value": "PAID",
+              "disabled": true
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

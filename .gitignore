@@ -1,0 +1,8 @@
+.DS_Store
+Thumbs.db
+*.log
+collection-hub/target/
+collection-hub/.mvn/
+.idea/
+*.iml
+.vscode/

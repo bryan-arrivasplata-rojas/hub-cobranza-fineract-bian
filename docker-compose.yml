@@ -1,0 +1,109 @@
+services:
+  fineract-db:
+    image: mariadb:11.4
+    container_name: fineract-db
+    environment:
+      MYSQL_ROOT_PASSWORD: skdcnwauicn2ucnawe
+      MYSQL_DATABASE: fineract_tenants
+    ports:
+      - "3306:3306"
+    volumes:
+      - fineract_db_data:/var/lib/mysql
+      - ./fineract/db-init/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - banking-net
+
+  fineract-server:
+    image: apache/fineract:1.12.1
+    container_name: fineract-server
+    depends_on:
+      fineract-db:
+        condition: service_healthy
+    environment:
+      FINERACT_HIKARI_DRIVER_SOURCE_CLASS_NAME: org.mariadb.jdbc.Driver
+      FINERACT_HIKARI_JDBC_URL: jdbc:mariadb://fineract-db:3306/fineract_tenants
+      FINERACT_HIKARI_USERNAME: root
+      FINERACT_HIKARI_PASSWORD: skdcnwauicn2ucnawe
+      FINERACT_DEFAULT_TENANTDB_HOSTNAME: fineract-db
+      FINERACT_DEFAULT_TENANTDB_PORT: 3306
+      FINERACT_DEFAULT_TENANTDB_UID: root
+      FINERACT_DEFAULT_TENANTDB_PWD: skdcnwauicn2ucnawe
+      FINERACT_DEFAULT_TENANTDB_TIMEZONE: America/Lima
+      FINERACT_NODE_ID: 1
+      DRIVERCLASS_NAME: org.mariadb.jdbc.Driver
+      PROTOCOL: jdbc
+      SUBPROTOCOL: mariadb
+      PORT: 3306
+    ports:
+      - "8443:8443"
+    networks:
+      - banking-net
+
+  collection-hub-db:
+    image: postgres:16-alpine
+    container_name: collection-hub-db
+    environment:
+      POSTGRES_DB: collection_hub
+      POSTGRES_USER: hub_user
+      POSTGRES_PASSWORD: hub_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - hub_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hub_user -d collection_hub"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - banking-net
+
+  collection-hub-app:
+    build:
+      context: ./collection-hub
+      dockerfile: Dockerfile
+    container_name: collection-hub-app
+    depends_on:
+      collection-hub-db:
+        condition: service_healthy
+      fineract-server:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://collection-hub-db:5432/collection_hub
+      SPRING_DATASOURCE_USERNAME: hub_user
+      SPRING_DATASOURCE_PASSWORD: hub_password
+      FINERACT_BASE_URL: https://fineract-server:8443/fineract-provider/api/v1
+      FINERACT_TENANT_ID: default
+      FINERACT_USERNAME: mifos
+      FINERACT_PASSWORD: password
+      FINERACT_INSECURE_SSL: "true"
+    ports:
+      - "8080:8080"
+    networks:
+      - banking-net
+
+  collection-hub-ui:
+    build:
+      context: ./collection-hub-ui
+      dockerfile: Dockerfile
+    container_name: collection-hub-ui
+    depends_on:
+      - collection-hub-app
+      - fineract-server
+    ports:
+      - "3000:80"
+    networks:
+      - banking-net
+
+volumes:
+  fineract_db_data:
+  hub_db_data:
+
+networks:
+  banking-net:
+    driver: bridge
